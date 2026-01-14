@@ -1,0 +1,55 @@
+{
+    "version": 1,
+    "name": "ChessInput",
+    "maps": [
+        {
+            "name": "Game",
+            "id": "0b614e99-d10c-4c1d-ae44-21a6fb79acc1",
+            "actions": [
+                {
+                    "name": "Click",
+                    "type": "Button",
+                    "id": "50cc178b-c246-4784-afd1-fb3dd3408971",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Point",
+                    "type": "Value",
+                    "id": "21ad0d08-3e82-4d94-a703-5ec1e338777c",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "0e428fcc-7b63-4256-a0ee-b217d60171da",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Click",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c647d80e-a607-4862-a8a3-90cf383fe2e7",
+                    "path": "<Mouse>/position",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Point",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
