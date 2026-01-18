@@ -37,6 +37,8 @@ public class NewMonoBehaviourScript : MonoBehaviour
                 GameObject generatedPiece = new GameObject($"{pieceName}(Piece{x+y})");
                 generatedPiece.transform.position = new Vector3(x, y, 0);
 
+                generatedPiece.tag = "ChessPiece";
+
                 SpriteRenderer renderer = generatedPiece.AddComponent<SpriteRenderer>();
 
                 Texture2D texture = Resources.Load<Texture2D>($"pieces/{pieceName}");

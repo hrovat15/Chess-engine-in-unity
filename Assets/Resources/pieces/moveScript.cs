@@ -60,6 +60,8 @@ public class moveScript : MonoBehaviour
 
         if (hit.collider != null)
         {
+            if (hit.transform.name[0] == 'w' && game.isWhiteTurn == -1) return;
+            if (hit.transform.name[0] == 'b' && game.isWhiteTurn == 1) return;
             selectedPiece = hit.transform;
             originalPosition = selectedPiece.position;
 
@@ -86,6 +88,15 @@ public class moveScript : MonoBehaviour
                 break;
             case "kn":
                 availableMoves = game.GetKnightMoves(index, isWhite);
+                break;
+            case "ro":
+                availableMoves = game.GetRookMoves(index, isWhite);
+                break;
+            case "qu":
+                availableMoves = game.GetQueenMoves(index, isWhite);
+                break;
+            case "ki":
+                availableMoves = game.GetKingMoves(index, isWhite);
                 break;
             default:
                 availableMoves = 0;
@@ -156,7 +167,17 @@ public class moveScript : MonoBehaviour
                 selectedPiece.position = new Vector2(targetX, targetY);
 
                 //posodobi stanje boarda v igri
-                Debug.Log(game.UpdatePosition((int)(originalPosition.y * 8 + originalPosition.x), targetIndex, selectedPiece.name[6].ToString() + selectedPiece.name[7].ToString()));
+                game.UpdatePosition((int)(originalPosition.y * 8 + originalPosition.x), targetIndex, selectedPiece.name[6].ToString() + selectedPiece.name[7].ToString());
+
+                foreach(GameObject piece in GameObject.FindGameObjectsWithTag("ChessPiece"))
+                {
+                    if (piece.name != selectedPiece.name && piece.transform.position == selectedPiece.position)
+                    {
+                        Destroy(piece);
+                    }
+                }
+
+                game.isWhiteTurn *= -1;
             }
             else
             {

@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using UnityEngine.UI;
 
 public class game
 {
@@ -27,20 +28,23 @@ public class game
     public const ulong notAFile = 0xFEFEFEFEFEFEFEFE;
     public const ulong notHFile = 0x7F7F7F7F7F7F7F7F;
 
+    public const ulong not1stRank = 0xFFFFFFFFFFFFFF00;
+    public const ulong not8thRank = 0x00FFFFFFFFFFFFFF;
+
     // Za konja bosta prišla prav še stolpca B in G
     public const ulong notABFile = 0xFCFCFCFCFCFCFCFC;
     public const ulong notGHFile = 0x3F3F3F3F3F3F3F3F;
 
-    public static string UpdatePosition(int from, int to, string pieceName)
+    public static int isWhiteTurn = 1;
+
+    public static void UpdatePosition(int from, int to, string pieceName)
     {
         ulong fromBit = 1UL << from;
         ulong toBit = 1UL << to;
 
         bool isWhite = (fromBit & WhitePieces) != 0 ? true: false;
 
-        string a = "";
-
-        if ((toBit & AllPieces) != 0) a = takePiece(toBit, isWhite);
+        if ((toBit & AllPieces) != 0) takePiece(toBit, isWhite);
 
         if (isWhite)
         {
@@ -111,10 +115,8 @@ public class game
 
         AllPieces &= ~fromBit;
         AllPieces |= toBit;
-
-        return a;
     }
-    private static string takePiece(ulong bit, bool isWhite)
+    private static void takePiece(ulong bit, bool isWhite)
     {
         if (!isWhite)
         {
@@ -138,8 +140,6 @@ public class game
         }
 
         AllPieces &= ~bit;
-
-        return "captured";
     }
 
     public static ulong GetPawnMoves(int square, bool isWhite)
@@ -211,7 +211,7 @@ public class game
         ulong bit = 1UL << square;
         ulong myPieces = isWhite ? WhitePieces : BlackPieces;
         ulong enemyPieces = isWhite ? BlackPieces : WhitePieces;
-        int[] directions = { 7, 9 }; // top-left and top-right
+        int[] directions = { 7, 9, -7, -9 }; // top-left and top-right
         ulong moves = 0;
 
         foreach (int dir in directions)
@@ -223,10 +223,15 @@ public class game
             {
                 // Check file boundaries before shift
                 if ((dir == 9 && (current & notHFile) == 0) ||
-                    (dir == 7 && (current & notAFile) == 0))
+                    (dir == 7 && (current & notAFile) == 0) ||
+                    (dir == -7 && (current & notHFile) == 0) ||
+                    (dir == -9 && (current & notAFile) == 0))
                     break;
 
-                current = current << dir; // slide to next square
+                current = dir > 0
+                    ? current << dir
+                    : current >> -dir;
+
                 if (current == 0) break;
 
                 if ((current & myPieces) != 0) break;
@@ -236,19 +241,33 @@ public class game
                 if ((current & enemyPieces) != 0) break;
             }
         }
+        return moves;
+    }
+
+    public static ulong GetRookMoves(int square, bool isWhite)
+    {
+        ulong bit = 1UL << square;
+        ulong myPieces = isWhite ? WhitePieces : BlackPieces;
+        ulong enemyPieces = isWhite ? BlackPieces : WhitePieces;
+        ulong moves = 0;
+
+        int[] directions = { 1, -1, 8, -8 };
+
         foreach (int dir in directions)
         {
             ulong current = bit;
 
-            // Slide up the board
             while (true)
             {
-                // Check file boundaries before shift
-                if ((dir == 7 && (current & notHFile) == 0) ||
-                    (dir == 9 && (current & notAFile) == 0))
-                    break;
+                if (dir == 1 && (current & notHFile) == 0) break;
+                if (dir == -1 && (current & notAFile) == 0) break;
+                if (dir == 8 && (current & not8thRank) == 0) break;
+                if (dir == -8 && (current & not1stRank) == 0) break;
 
-                current = current >> dir; // slide to next square
+                current = dir > 0
+                    ? current << dir
+                    : current >> -dir;
+
                 if (current == 0) break;
 
                 if ((current & myPieces) != 0) break;
@@ -258,6 +277,30 @@ public class game
                 if ((current & enemyPieces) != 0) break;
             }
         }
+
+        return moves;
+    }
+
+    public static ulong GetQueenMoves(int square, bool isWhite)
+    {
+        return GetBishopMoves(square, isWhite) | GetRookMoves(square, isWhite);
+    }
+
+    public static ulong GetKingMoves(int square, bool isWhite)
+    {
+        ulong bit = 1UL << square;
+        ulong myPieces = isWhite ? WhitePieces : BlackPieces;
+        ulong moves = 0;
+        moves |= (bit << 8); // gor
+        moves |= (bit >> 8); // dol
+        moves |= (bit << 1) & notHFile; // desno
+        moves |= (bit >> 1) & notAFile; // levo
+        moves |= (bit << 9) & notHFile; // gor desno
+        moves |= (bit << 7) & notAFile; // gor levo
+        moves |= (bit >> 7) & notHFile; // dol desno
+        moves |= (bit >> 9) & notAFile; // dol levo
+        // Odstranimo polja z lastnimi figurami
+        moves &= ~myPieces;
         return moves;
     }
 }
