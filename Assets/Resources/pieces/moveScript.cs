@@ -102,7 +102,110 @@ public class moveScript : MonoBehaviour
                 availableMoves = 0;
                 break;
         }
+
+        // Remove moves that would leave own king in check
+        availableMoves = FilterLegalMoves(index, availableMoves, isWhite, piece);
+
         drawPossibleMoves();
+    }
+
+    // Filters candidate moves by simulating each and removing those that leave mover's king in check
+    private ulong FilterLegalMoves(int from, ulong moves, bool isWhite, string pieceName)
+    {
+        if (moves == 0) return 0UL;
+
+        // backup board state
+        ulong b_WhitePawns = game.WhitePawns;
+        ulong b_WhiteRooks = game.WhiteRooks;
+        ulong b_WhiteKnights = game.WhiteKnights;
+        ulong b_WhiteBishops = game.WhiteBishops;
+        ulong b_WhiteQueens = game.WhiteQueens;
+        ulong b_WhiteKing = game.WhiteKing;
+
+        ulong b_BlackPawns = game.BlackPawns;
+        ulong b_BlackRooks = game.BlackRooks;
+        ulong b_BlackKnights = game.BlackKnights;
+        ulong b_BlackBishops = game.BlackBishops;
+        ulong b_BlackQueens = game.BlackQueens;
+        ulong b_BlackKing = game.BlackKing;
+
+        ulong b_WhitePieces = game.WhitePieces;
+        ulong b_BlackPieces = game.BlackPieces;
+        ulong b_AllPieces = game.AllPieces;
+
+        // backup castling/en-passant and last-move metadata
+        bool b_WhiteCanCastleKingSide = game.WhiteCanCastleKingSide;
+        bool b_WhiteCanCastleQueenSide = game.WhiteCanCastleQueenSide;
+        bool b_BlackCanCastleKingSide = game.BlackCanCastleKingSide;
+        bool b_BlackCanCastleQueenSide = game.BlackCanCastleQueenSide;
+        int b_enPassantSquare = game.enPassantSquare;
+
+        int b_lastCapturedSquare = game.lastCapturedSquare;
+        bool b_lastMoveWasEnPassant = game.lastMoveWasEnPassant;
+        int b_lastCastleRookFrom = game.lastCastleRookFrom;
+        int b_lastCastleRookTo = game.lastCastleRookTo;
+        int b_lastPromotedSquare = game.lastPromotedSquare;
+        string b_lastPromotedPiece = game.lastPromotedPiece;
+
+        ulong filtered = 0UL;
+        ulong tmp = moves;
+        while (tmp != 0)
+        {
+            // get least significant bit index
+            int to = 0;
+            ulong ttmp = tmp;
+            while ((ttmp & 1UL) == 0)
+            {
+                ttmp >>= 1;
+                to++;
+            }
+
+            // perform move
+            game.UpdatePosition(from, to, pieceName);
+
+            // if king is not in check after move, keep this move
+            if (!game.IsKingInCheck(isWhite))
+            {
+                filtered |= (1UL << to);
+            }
+
+            // restore board (including castling/en-passant and metadata)
+            game.WhitePawns = b_WhitePawns;
+            game.WhiteRooks = b_WhiteRooks;
+            game.WhiteKnights = b_WhiteKnights;
+            game.WhiteBishops = b_WhiteBishops;
+            game.WhiteQueens = b_WhiteQueens;
+            game.WhiteKing = b_WhiteKing;
+
+            game.BlackPawns = b_BlackPawns;
+            game.BlackRooks = b_BlackRooks;
+            game.BlackKnights = b_BlackKnights;
+            game.BlackBishops = b_BlackBishops;
+            game.BlackQueens = b_BlackQueens;
+            game.BlackKing = b_BlackKing;
+
+            game.WhitePieces = b_WhitePieces;
+            game.BlackPieces = b_BlackPieces;
+            game.AllPieces = b_AllPieces;
+
+            game.WhiteCanCastleKingSide = b_WhiteCanCastleKingSide;
+            game.WhiteCanCastleQueenSide = b_WhiteCanCastleQueenSide;
+            game.BlackCanCastleKingSide = b_BlackCanCastleKingSide;
+            game.BlackCanCastleQueenSide = b_BlackCanCastleQueenSide;
+            game.enPassantSquare = b_enPassantSquare;
+
+            game.lastCapturedSquare = b_lastCapturedSquare;
+            game.lastMoveWasEnPassant = b_lastMoveWasEnPassant;
+            game.lastCastleRookFrom = b_lastCastleRookFrom;
+            game.lastCastleRookTo = b_lastCastleRookTo;
+            game.lastPromotedSquare = b_lastPromotedSquare;
+            game.lastPromotedPiece = b_lastPromotedPiece;
+
+            // clear tested bit
+            tmp &= tmp - 1;
+        }
+
+        return filtered;
     }
 
     private void PlayMoveSound()
@@ -164,11 +267,16 @@ public class moveScript : MonoBehaviour
                 {
                     PlayMoveSound();
                 }
-                selectedPiece.position = new Vector2(targetX, targetY);
 
                 //posodobi stanje boarda v igri
-                game.UpdatePosition((int)(originalPosition.y * 8 + originalPosition.x), targetIndex, selectedPiece.name[6].ToString() + selectedPiece.name[7].ToString());
+                bool moverIsWhite = selectedPiece.name[0] == 'w';
+                string pieceName = selectedPiece.name[6].ToString() + selectedPiece.name[7].ToString();
+                int fromIndex = (int)(originalPosition.y * 8 + originalPosition.x);
 
+                // call update
+                game.UpdatePosition(fromIndex, targetIndex, pieceName);
+
+                // Destroy any piece that is now on the destination (normal capture)
                 foreach(GameObject piece in GameObject.FindGameObjectsWithTag("ChessPiece"))
                 {
                     if (piece.name != selectedPiece.name && piece.transform.position == selectedPiece.position)
@@ -177,6 +285,91 @@ public class moveScript : MonoBehaviour
                     }
                 }
 
+                // Handle en-passant removal (captured pawn sits on a different square)
+                if (game.lastMoveWasEnPassant && game.lastCapturedSquare != -1)
+                {
+                    int cx = game.lastCapturedSquare % 8;
+                    int cy = game.lastCapturedSquare / 8;
+                    foreach (GameObject piece in GameObject.FindGameObjectsWithTag("ChessPiece"))
+                    {
+                        if (piece.transform.position == new Vector3(cx, cy, 0))
+                        {
+                            Destroy(piece);
+                        }
+                    }
+                }
+                else if (game.lastCapturedSquare != -1)
+                {
+                    // In case takePiece recorded a captured square not overlapping destination (rare), remove it too
+                    int cx = game.lastCapturedSquare % 8;
+                    int cy = game.lastCapturedSquare / 8;
+                    foreach (GameObject piece in GameObject.FindGameObjectsWithTag("ChessPiece"))
+                    {
+                        if (piece.transform.position == new Vector3(cx, cy, 0))
+                        {
+                            Destroy(piece);
+                        }
+                    }
+                }
+
+                // Handle castling rook movement in the scene
+                if (game.lastCastleRookFrom != -1 && game.lastCastleRookTo != -1)
+                {
+                    int rf_x = game.lastCastleRookFrom % 8;
+                    int rf_y = game.lastCastleRookFrom / 8;
+                    int rt_x = game.lastCastleRookTo % 8;
+                    int rt_y = game.lastCastleRookTo / 8;
+
+                    // find the rook GameObject at rookFrom and move it to rookTo
+                    foreach (GameObject piece in GameObject.FindGameObjectsWithTag("ChessPiece"))
+                    {
+                        if (piece.transform.position == new Vector3(rf_x, rf_y, 0))
+                        {
+                            piece.transform.position = new Vector3(rt_x, rt_y, 0);
+                            // update name to reflect moved rook position (keep same color and piece type)
+                            break;
+                        }
+                    }
+                }
+
+                // Handle promotion: replace sprite/name for promoted pawn (auto-promote to queen currently)
+                if (game.lastPromotedSquare == targetIndex && game.lastPromotedPiece != null)
+                {
+                    // set sprite and rename selected piece to queen
+                    string colorPrefix = moverIsWhite ? "white" : "black";
+                    string queenResource = $"{colorPrefix}-queen";
+                    Texture2D texture = Resources.Load<Texture2D>($"pieces/{queenResource}");
+                    if (texture != null)
+                    {
+                        Sprite sprite = Sprite.Create(
+                            texture,
+                            new Rect(0, 0, texture.width, texture.height),
+                            Vector2.zero,
+                            100f
+                        );
+                        SpriteRenderer renderer = selectedPiece.GetComponent<SpriteRenderer>();
+                        if (renderer != null) renderer.sprite = sprite;
+                    }
+                    // rename to "white-queen(...)" keeping the suffix "(PieceN)" if present
+                    int parenIdx = selectedPiece.name.IndexOf('(');
+                    string suffix = parenIdx >= 0 ? selectedPiece.name.Substring(parenIdx) : "";
+                    selectedPiece.name = $"{colorPrefix}-queen{suffix}";
+                }
+
+                selectedPiece.position = new Vector2(targetX, targetY);
+
+                // After move: detect check or checkmate against opponent
+                bool opponentIsWhite = !moverIsWhite;
+                if (game.IsKingInCheck(opponentIsWhite))
+                {
+                    Debug.Log("Check on " + (opponentIsWhite ? "white" : "black"));
+                }
+                if (game.IsCheckmate(opponentIsWhite))
+                {
+                    Debug.Log("Checkmate on " + (opponentIsWhite ? "white" : "black"));
+                }
+
+                // flip turn
                 game.isWhiteTurn *= -1;
             }
             else
