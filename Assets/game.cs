@@ -469,7 +469,8 @@ public class game
         return GetBishopMoves(square, isWhite) | GetRookMoves(square, isWhite);
     }
 
-    public static ulong GetKingMoves(int square, bool isWhite)
+    // Add an optional parameter to GetKingMoves
+    public static ulong GetKingMoves(int square, bool isWhite, bool includeCastling = true)
     {
         ulong bit = 1UL << square;
         ulong myPieces = isWhite ? WhitePieces : BlackPieces;
@@ -484,6 +485,9 @@ public class game
         moves |= (bit >> 9) & notHFile; // dol levo
         // Odstranimo polja z lastnimi figurami
         moves &= ~myPieces;
+
+        // Only check castling if requested (to prevent infinite recursion)
+        if (!includeCastling) return moves;
 
         // CASTLING generation: add king-side/queen-side if legal
         if (isWhite)
@@ -621,7 +625,8 @@ public class game
         if (attackerKing != 0)
         {
             int from = BitScanForward(attackerKing);
-            if ((GetKingMoves(from, byWhite) & targetBit) != 0) return true;
+            // Use includeCastling = false to prevent recursion
+            if ((GetKingMoves(from, byWhite, false) & targetBit) != 0) return true;
         }
 
         return false;
@@ -742,7 +747,7 @@ public class game
             if (TryMovesFromBitboard(WhiteBishops, GetBishopMoves, "bi")) return false;
             if (TryMovesFromBitboard(WhiteRooks, GetRookMoves, "ro")) return false;
             if (TryMovesFromBitboard(WhiteQueens, GetQueenMoves, "qu")) return false;
-            if (TryMovesFromBitboard(WhiteKing, GetKingMoves, "ki")) return false;
+            if (TryMovesFromBitboard(WhiteKing, (from, isWhite) => GetKingMoves(from, isWhite, false), "ki")) return false;
         }
         else
         {
@@ -751,7 +756,7 @@ public class game
             if (TryMovesFromBitboard(BlackBishops, GetBishopMoves, "bi")) return false;
             if (TryMovesFromBitboard(BlackRooks, GetRookMoves, "ro")) return false;
             if (TryMovesFromBitboard(BlackQueens, GetQueenMoves, "qu")) return false;
-            if (TryMovesFromBitboard(BlackKing, GetKingMoves, "ki")) return false;
+            if (TryMovesFromBitboard(BlackKing, (from, isWhite) => GetKingMoves(from, isWhite, false), "ki")) return false;
         }
 
         // No legal moves that remove check -> checkmate

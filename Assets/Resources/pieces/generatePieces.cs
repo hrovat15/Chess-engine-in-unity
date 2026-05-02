@@ -46,7 +46,7 @@ public class NewMonoBehaviourScript : MonoBehaviour
                 Sprite sprite = Sprite.Create(
                     texture,
                     new Rect(0, 0, texture.width, texture.height),
-                    Vector2.zero,
+                    new Vector2(0.5f, 0.5f),
                     100f
                 );
 

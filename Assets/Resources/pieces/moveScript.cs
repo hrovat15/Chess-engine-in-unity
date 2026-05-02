@@ -46,7 +46,7 @@ public class moveScript : MonoBehaviour
         if (selectedPiece != null)
         {
             Vector2 mousePos = GetMouseWorldPosition();
-            selectedPiece.position = mousePos - new Vector2(0.5f, 0.5f);
+            selectedPiece.position = mousePos;
         }
     }
 
@@ -226,7 +226,7 @@ public class moveScript : MonoBehaviour
                 int y = i / 8;
                 GameObject marker = new GameObject($"MoveMarker_{x}_{y}");
                 marker.transform.localScale = new Vector2(0.8f, 0.8f);
-                marker.transform.position = new Vector3(x + 0.5f, y + 0.5f, 0);
+                marker.transform.position = new Vector3(x, y, 0);
 
                 SpriteRenderer renderer = marker.AddComponent<SpriteRenderer>();
                 marker.tag = "MoveMarker";
@@ -253,6 +253,8 @@ public class moveScript : MonoBehaviour
 
         int targetX = Mathf.RoundToInt(selectedPiece.position.x);
         int targetY = Mathf.RoundToInt(selectedPiece.position.y);
+
+        ushort flags = 0;
 
         if (targetX >= 0 && targetX < 8 && targetY >= 0 && targetY < 8)
         {
@@ -282,6 +284,7 @@ public class moveScript : MonoBehaviour
                     if (piece.name != selectedPiece.name && piece.transform.position == selectedPiece.position)
                     {
                         Destroy(piece);
+                        flags = 4;
                     }
                 }
 
@@ -295,6 +298,7 @@ public class moveScript : MonoBehaviour
                         if (piece.transform.position == new Vector3(cx, cy, 0))
                         {
                             Destroy(piece);
+                            flags = 5;
                         }
                     }
                 }
@@ -308,6 +312,7 @@ public class moveScript : MonoBehaviour
                         if (piece.transform.position == new Vector3(cx, cy, 0))
                         {
                             Destroy(piece);
+                            flags = 4;
                         }
                     }
                 }
@@ -326,7 +331,8 @@ public class moveScript : MonoBehaviour
                         if (piece.transform.position == new Vector3(rf_x, rf_y, 0))
                         {
                             piece.transform.position = new Vector3(rt_x, rt_y, 0);
-                            // update name to reflect moved rook position (keep same color and piece type)
+                            if (targetX == 6) flags = 2;
+                            else if (targetX == 2) flags = 3;
                             break;
                         }
                     }
@@ -354,6 +360,8 @@ public class moveScript : MonoBehaviour
                     int parenIdx = selectedPiece.name.IndexOf('(');
                     string suffix = parenIdx >= 0 ? selectedPiece.name.Substring(parenIdx) : "";
                     selectedPiece.name = $"{colorPrefix}-queen{suffix}";
+                    if (flags != 0) flags = 15;
+                    else flags = 11;
                 }
 
                 selectedPiece.position = new Vector2(targetX, targetY);
@@ -369,8 +377,9 @@ public class moveScript : MonoBehaviour
                     Debug.Log("Checkmate on " + (opponentIsWhite ? "white" : "black"));
                 }
 
-                // flip turn
-                game.isWhiteTurn *= -1;
+                engine.MakePlayerMove(fromIndex, targetIndex, flags);
+
+                StartCoroutine(CallAiMoveWithDelay());
             }
             else
             {
@@ -390,6 +399,12 @@ public class moveScript : MonoBehaviour
         }
 
         selectedPiece = null;
+    }
+
+    private System.Collections.IEnumerator CallAiMoveWithDelay()
+    {
+        yield return new WaitForSeconds(0.5f);
+        engine.MakeAiMove();
     }
 
     private Vector2 GetMouseWorldPosition()

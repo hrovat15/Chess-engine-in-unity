@@ -14,7 +14,7 @@ public class generateBoard : MonoBehaviour
             {
                 GameObject tile = new GameObject($"Tile_{i}_{j}");
                 tile.GetComponentInParent<Transform>().SetParent(this.transform);
-                tile.transform.position = new Vector3(i, j, 0);
+                tile.transform.position = new Vector3(i - 0.5f, j - 0.5f, 0);
                 SpriteRenderer renderer = tile.AddComponent<SpriteRenderer>();
                 renderer.sortingLayerName = "board";
                 Sprite sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.zero, 1);
